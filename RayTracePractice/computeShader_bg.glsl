@@ -2,6 +2,8 @@
 layout(local_size_x = 1, local_size_y = 1) in;
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 uniform samplerCube skybox;
+uniform vec4 aperture;
+uniform mat4 rotation = mat4(1.0);
 layout(rgba32f, binding = 0) uniform image2D img_output;
 
 #define MAXMESH 1000
@@ -13,8 +15,8 @@ layout(std140, binding = 0) uniform MESH_IN
 
 uniform float size;
 
-vec3 ray_o;
-vec3 ray_d;
+vec4 ray_o;
+vec4 ray_d;
 vec4 pixel;
 vec4 color;
 
@@ -153,33 +155,6 @@ vec4 drawBackground(vec3 r_origin, vec3 r_direction)
 	return texture(skybox, nearest);
 }
 
-vec3 normalizeTri(vec3 points[3]){
-	return cross(points[1]-points[0],points[2]-points[0]);
-}
-
-float triangle(vec3 points[3]){
-	vec3 N = normalizeTri(points);
-	float d = dot(N,points[0]);
-	
-	if(abs(dot(N,ray_d))<0.1f) return -1.0f;
-
-	float t = -1*(dot(N,ray_o)+d)/dot(N,ray_d);
-
-	if(t<0) return -1.0f;
-
-	vec3 p = ray_o + t*ray_d;
-
-	if(dot(N,cross(points[1]-points[0],p-points[0]))>0 &&
-	   dot(N,cross(points[2]-points[1],p-points[1]))>0 &&
-	   dot(N,cross(points[0]-points[2],p-points[2]))>0){
-	   
-	   float dist = length(ray_d*t);
-	   return dist;
-	}
-
-	return -1.0f;
-}
-
 IntersectData intersectSphere(vec3 ray_origin, vec3 ray_direction, vec3 centre, float radius, vec4 sphere_color)
 {
 	vec3 omc = ray_origin - centre;
@@ -270,17 +245,15 @@ void main(){
 	float max_x = 5.0;
 	float max_y = 5.0;
 	ivec2 dims = imageSize(img_output);
-	float x = float(pixel_coords.x * 2 - dims.x) / dims.x;
-	float y = 0.2 + float(pixel_coords.y * 2 - dims.y) / dims.y;
-	ray_o = vec3(x*max_x, y*max_y, 0.0);
-	ray_d = vec3(0.0,0.0,-1.0);
+	float x = max_x * (pixel_coords.x * 2 - dims.x) / dims.x;
+	float y = max_y * (pixel_coords.y * 2 - dims.y) / dims.y;
+	float z = 0.0;
 
-	pixel = vec4(abs(x),abs(y),0.0,1.0);
+	vec4 viewing_plane = vec4(x, y, z, 1.0) * rotation;
+	ray_o = vec4(0.0, 0.0, 10.0, 1.0);
+	ray_d = normalize(viewing_plane - ray_o);
 
-	ray_o = vec3(0.0, 0.2, 10.0);
-	ray_d = normalize(vec3(x*max_x,y*max_y,0.0) - ray_o);
-
-	color = rayTrace(5, ray_o, ray_d);
+	color = rayTrace(5, vec3(ray_o.x, ray_o.y, ray_o.z), vec3(ray_d.x, ray_d.y, ray_d.z));
 	pixel = color;
 	
 	imageStore(img_output,pixel_coords,pixel);

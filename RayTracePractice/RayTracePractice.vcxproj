@@ -148,7 +148,8 @@
     <ClCompile Include="stb_image.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="ComputeShader.glsl" />
+    <None Include="computeShader_bg.glsl" />
+    <None Include="computeShader_lighting.glsl" />
     <None Include="Fragment.glsl" />
     <None Include="Vertex.glsl" />
   </ItemGroup>

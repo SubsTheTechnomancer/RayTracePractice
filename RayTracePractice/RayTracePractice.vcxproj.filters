@@ -26,15 +26,16 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="ComputeShader.glsl">
-      <Filter>Source Files</Filter>
-    </None>
     <None Include="Vertex.glsl">
       <Filter>Source Files</Filter>
     </None>
     <None Include="Fragment.glsl">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="computeShader_bg.glsl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="computeShader_lighting.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stb_image.h">

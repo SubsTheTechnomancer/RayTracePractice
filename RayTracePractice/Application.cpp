@@ -1,6 +1,8 @@
 #include<glad/glad.h>
 #include<GLFW/glfw3.h>
 #include "stb_image.h"
+#include "external/glm/glm.hpp"
+#include "external/glm/gtc/matrix_transform.hpp"
 
 #include<iostream>
 #include<fstream>
@@ -10,8 +12,9 @@
 
 using namespace std;
 
-int width = 1000;
-int height = 1000;
+int width = 900;
+int height = 900;
+int scene = 1;
 
 const char* vertexS = "#version 430\n"
 "layout(location = 0) in vec3 Position;\n"
@@ -143,7 +146,11 @@ int main() {
 	const char* fragmentSource;
 	fragmentSource = shaderSource.c_str();
 
-	shaderSource = GetShaderSource("ComputeShader.glsl");
+	if(scene==0)
+		shaderSource = GetShaderSource("computeShader_bg.glsl");
+	else if(scene==1)
+		shaderSource = GetShaderSource("computeShader_lighting.glsl");
+
 	const char* computeSource;
 	computeSource = shaderSource.c_str();
 
@@ -236,18 +243,24 @@ int main() {
 			prefix + "back.jpg"
 	};
 	unsigned int cubemapTexture = loadCubemap(faces);
-        
+
+	float aperture[4] =
+	{
+		0.0f, 0.0f, 10.0f, 1.0f
+	};
+       
+	glUseProgram(rayProgram);
+	glDispatchCompute((GLuint)tw, (GLuint)th, 1);
+	int sizeLoc = glGetUniformLocation(rayProgram, "size");
+	glUniform1f(sizeLoc, sizeof(mesh) / 4);
+	int appertureLoc = glGetUniformLocation(rayProgram, "aperture");
+	glUniform4fv(appertureLoc, 1, aperture);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+
+	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	//Loop
 	while (!glfwWindowShouldClose(window)) {
-		glUseProgram(rayProgram);
-		glDispatchCompute((GLuint)tw, (GLuint)th, 1);
 
-		int sizeLoc = glGetUniformLocation(rayProgram, "size");
-                
-		glUniform1f(sizeLoc, sizeof(mesh) / 4);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-
-		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
 		glClear(GL_COLOR_BUFFER_BIT);
 		glUseProgram(quadProgram);
