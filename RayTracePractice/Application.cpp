@@ -214,24 +214,6 @@ int main() {
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
 
-	float mesh[] = 
-	{
-		1,1,0,0,
-		1,0,0,0,
-		0,1,0,0,
-		1,0,0,0,
-		0,0,0,0,
-		0,1,0,0,
-	};
-
-	GLuint meshBlock;
-	glGenBuffers(1, &meshBlock);
-	glBindBuffer(GL_UNIFORM_BUFFER, meshBlock);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(mesh), NULL, GL_STATIC_DRAW);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-	glBindBufferBase(GL_UNIFORM_BUFFER, 0, meshBlock);
-
 	std::string prefix = "res/skyboxes/ocean/";
 	vector<std::string> faces
 	{
@@ -254,15 +236,14 @@ int main() {
 	while (!glfwWindowShouldClose(window)) {
 
 		glUseProgram(rayProgram);
-		glDispatchCompute((GLuint)tw, (GLuint)th, 1);
 		int sizeLoc = glGetUniformLocation(rayProgram, "size");
-		glUniform1f(sizeLoc, sizeof(mesh) / 4);
 		int seedLoc = glGetUniformLocation(rayProgram, "seed");
 		glUniform1f(seedLoc, seed);
 		seed += 3.1415f;
 		int appertureLoc = glGetUniformLocation(rayProgram, "aperture");
 		glUniform4fv(appertureLoc, 1, aperture);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+		glDispatchCompute((GLuint)tw, (GLuint)th, 1);
 
 		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -271,10 +252,6 @@ int main() {
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, tex_out);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		glBindBuffer(GL_UNIFORM_BUFFER, meshBlock);
-		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(mesh), mesh);
-		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 		glfwPollEvents();
 
