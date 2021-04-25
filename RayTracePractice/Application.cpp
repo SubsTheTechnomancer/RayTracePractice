@@ -248,20 +248,23 @@ int main() {
 	{
 		0.0f, 0.0f, 10.0f, 1.0f
 	};
+	float seed = 0.5f;
        
-	glUseProgram(rayProgram);
-	glDispatchCompute((GLuint)tw, (GLuint)th, 1);
-	int sizeLoc = glGetUniformLocation(rayProgram, "size");
-	glUniform1f(sizeLoc, sizeof(mesh) / 4);
-	int appertureLoc = glGetUniformLocation(rayProgram, "aperture");
-	glUniform4fv(appertureLoc, 1, aperture);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-
-	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	//Loop
 	while (!glfwWindowShouldClose(window)) {
 
+		glUseProgram(rayProgram);
+		glDispatchCompute((GLuint)tw, (GLuint)th, 1);
+		int sizeLoc = glGetUniformLocation(rayProgram, "size");
+		glUniform1f(sizeLoc, sizeof(mesh) / 4);
+		int seedLoc = glGetUniformLocation(rayProgram, "seed");
+		glUniform1f(seedLoc, seed);
+		seed += 3.1415f;
+		int appertureLoc = glGetUniformLocation(rayProgram, "aperture");
+		glUniform4fv(appertureLoc, 1, aperture);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
 
+		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glUseProgram(quadProgram);
 		glBindVertexArray(VAO);

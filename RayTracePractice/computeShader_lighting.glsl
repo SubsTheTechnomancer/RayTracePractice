@@ -2,6 +2,7 @@
 layout(local_size_x = 1, local_size_y = 1) in;
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 uniform samplerCube skybox;
+uniform float seed;
 layout(rgba32f, binding = 0) uniform image2D img_output;
 
 #define MAXMESH 1000
@@ -43,8 +44,10 @@ RayHit CreateRayHit(){
     return hit;
 }
 
+float internal_seed = seed;
 float rand(){
-    return fract(sin(dot(pixel.xy ,vec2(12.9898,78.233))) * 43758.5453);
+    return fract(sin(internal_seed/100.0f*dot(pixel.xy ,vec2(12.9898,78.233))) * 43758.5453);
+	internal_seed += 1.0f;
 }
 
 float sdot(vec3 x, vec3 y, float f){
@@ -83,14 +86,14 @@ vec3 SampleHemisphere(vec3 normal,float alpha){
 
 RayHit intersectRoom(vec3 r_origin, vec3 r_direction)
 {
+	float halflength = 50.0;
 	bool testBack=true, testLeft=true, testBottom=true;
 	vec3 nearest;
 	float nearest_dist = 175.0;
 	vec3 normal;
-	vec4 color = vec4(1.0, 1.0, 1.0, 1.0);
 
 	//front face
-	vec3 p_point = vec3(0.0, 0.0, -100.0);
+	vec3 p_point = vec3(0.0, 0.0, -halflength);
 	vec3 p_normal = vec3(0.0, 0.0, 1.0);
 	float denom = dot(p_normal, r_direction);
 	if (abs(denom) > 0.0001f) // your favorite epsilon
@@ -107,7 +110,7 @@ RayHit intersectRoom(vec3 r_origin, vec3 r_direction)
 	else testBottom = false;
 
 	//right face
-	p_point = vec3(100.0, 0.0, 0.0);
+	p_point = vec3(halflength, 0.0, 0.0);
 	p_normal = vec3(-1.0, 0.0, 0.0);
 	denom = dot(p_normal, r_direction);
 	if (abs(denom) > 0.0001f) // your favorite epsilon
@@ -128,7 +131,7 @@ RayHit intersectRoom(vec3 r_origin, vec3 r_direction)
 	else testLeft = false;
 
 	//top face
-	p_point = vec3(0.0, 100.0, 0.0);
+	p_point = vec3(0.0, halflength, 0.0);
 	p_normal = vec3(0.0, -1.0, 0.0);
 	denom = dot(p_normal, r_direction);
 	if (abs(denom) > 0.0001f) // your favorite epsilon
@@ -151,7 +154,7 @@ RayHit intersectRoom(vec3 r_origin, vec3 r_direction)
 	//back face
 	if(testBack)
 	{
-		vec3 p_point = vec3(0.0, 0.0, 100.0);
+		vec3 p_point = vec3(0.0, 0.0, halflength);
 		vec3 p_normal = vec3(0.0, 0.0, -1.0);
 		float denom = dot(p_normal, r_direction);
 		if (abs(denom) > 0.0001f) // your favorite epsilon
@@ -173,7 +176,7 @@ RayHit intersectRoom(vec3 r_origin, vec3 r_direction)
 	//left face
 	if(testLeft)
 	{
-		vec3 p_point = vec3(-100.0, 0.0, 0.0);
+		vec3 p_point = vec3(-halflength, 0.0, 0.0);
 		vec3 p_normal = vec3(1.0, 0.0, 0.0);
 		float denom = dot(p_normal, r_direction);
 		if (abs(denom) > 0.0001f) // your favorite epsilon
@@ -195,7 +198,7 @@ RayHit intersectRoom(vec3 r_origin, vec3 r_direction)
 	//bottom face
 	if(testBottom)
 	{
-		vec3 p_point = vec3(0.0, -100.0, 0.0);
+		vec3 p_point = vec3(0.0, -halflength, 0.0);
 		vec3 p_normal = vec3(0.0, 1.0, 0.0);
 		float denom = dot(p_normal, r_direction);
 		if (abs(denom) > 0.0001f) // your favorite epsilon
@@ -213,10 +216,10 @@ RayHit intersectRoom(vec3 r_origin, vec3 r_direction)
 			}
 		}
 	}
-	return RayHit(nearest, nearest_dist, normal, vec3(0.0),  vec3(0.0), 0.0,  vec3(0.0));
+	return RayHit(nearest, nearest_dist, normal, vec3(0.3),  vec3(0.4), 0.0,  vec3(0.0));
 }
 
-RayHit intersectSphere(vec3 ray_origin, vec3 ray_direction, vec3 centre, float radius)
+RayHit intersectSphere(vec3 ray_origin, vec3 ray_direction, vec3 centre, float radius, vec3 albedo)
 {
 	vec3 omc = ray_origin - centre;
 	float a = dot(ray_direction, ray_direction);
@@ -237,7 +240,7 @@ RayHit intersectSphere(vec3 ray_origin, vec3 ray_direction, vec3 centre, float r
 			vec3 intersection = ray_origin + t*ray_direction;
 			float dist = length(t*ray_direction);
 			vec3 normal = normalize(intersection - centre);
-			return RayHit(intersection, dist, normal, vec3(0.0), vec3(0.0), 0.0, vec3(1.0));
+			return RayHit(intersection, dist, normal, albedo, vec3(0.4), 1.0, vec3(0.3));
 		}
 
 		numerator = -b + sqrt(discriminant);
@@ -247,7 +250,7 @@ RayHit intersectSphere(vec3 ray_origin, vec3 ray_direction, vec3 centre, float r
 			vec3 intersection = ray_origin + t*ray_direction;
 			float dist = length(t*ray_direction);
 			vec3 normal = normalize(intersection - centre);
-			return RayHit(intersection, dist, normal, vec3(0.0), vec3(0.0), 0.0, vec3(1.0));
+			return RayHit(intersection, dist, normal, vec3(0.3), vec3(0.4), 1.0, vec3(0.3));
 		}
 		else
 		{
@@ -265,19 +268,19 @@ RayHit Trace(Ray ray){
 	current_intersect = intersectRoom(current_ray_origin, current_ray_direction);
 	hit = current_intersect;
 		
-	current_intersect = intersectSphere(current_ray_origin, current_ray_direction, vec3(-5.0, 4.0, -30.0), 5.0);
+	current_intersect = intersectSphere(current_ray_origin, current_ray_direction, vec3(-5.0, 4.0, -30.0), 5.0, vec3(1.0, 1.0, 0.8));
 	if(current_intersect.dist > 0.001f && (hit.dist > current_intersect.dist || hit.dist <= 0.001f))
 	{
 		hit = current_intersect;
 	}
 
-	current_intersect = intersectSphere(current_ray_origin, current_ray_direction, vec3(5.0, -7.0, -20.0), 7.0);
+	current_intersect = intersectSphere(current_ray_origin, current_ray_direction, vec3(5.0, -7.0, -20.0), 7.0, vec3(1.0, 0.8, 1.0));
 	if(current_intersect.dist > 0.001f && (hit.dist > current_intersect.dist || hit.dist <= 0.001f))
 	{
 		hit = current_intersect;
 	}
 
-	current_intersect = intersectSphere(current_ray_origin, current_ray_direction, vec3(-8.0, -7.0, -20.0), 3.0);
+	current_intersect = intersectSphere(current_ray_origin, current_ray_direction, vec3(-8.0, -7.0, -20.0), 3.0, vec3(0.8, 1.0, 1.0));
 	if(current_intersect.dist > 0.001f && (hit.dist > current_intersect.dist || hit.dist <= 0.001f))
 	{
 		hit = current_intersect;
@@ -303,16 +306,18 @@ vec3 Shade(inout Ray ray, RayHit hit)
 			ray.direction = SampleHemisphere(reflect(ray.direction, hit.normal), alpha);
 			float f = (alpha+2)/(alpha+1);
 			ray.energy *= (1.0f / specChance) * hit.specular * sdot(hit.normal, ray.direction,f);
+//			ray.energy = vec3(0.0);
 		}
 		else if((diffChance > 0 && roulette < specChance + diffChance))
 		{
 			ray.origin = hit.position + hit.normal * 0.001f;
 			ray.direction = SampleHemisphere(hit.normal,1.0f);
 			ray.energy *= (1.0f / diffChance) * 2 * hit.albedo * sdot(hit.normal, ray.direction, 1.0);
+//			ray.energy = vec3(0.5);
 		}
 		else
 		{
-			ray.energy = vec3(0.0f);
+			ray.energy = vec3(0.0);
 		}
  
 		return hit.emission;
@@ -325,7 +330,6 @@ vec3 Shade(inout Ray ray, RayHit hit)
 		float phi = atan(ray.direction.x, ray.direction.z)/(3.141592f);
 		return vec3(0,0,0);
 	}
-	return vec3(0,0,0);
 }
 
 void main(){
@@ -335,11 +339,12 @@ void main(){
 	float max_y = 5.0;
 	ivec2 dims = imageSize(img_output);
 	float x = float(pixel_coords.x * 2 - dims.x) / dims.x;
-	float y = 0.2 + float(pixel_coords.y * 2 - dims.y) / dims.y;
-
+	float y = float(pixel_coords.y * 2 - dims.y) / dims.y;
+	pixel = vec4(x, y, 0.0, 1.0);
 	Ray ray;
-	ray.origin = vec3(0.0, 0.2, 10.0);
+	ray.origin = vec3(0.0, 0.0, 10.0);
 	ray.direction = normalize(vec3(x*max_x,y*max_y,0.0) - ray.origin);
+	ray.energy = vec3(1.0f);
 
 	vec3 result;
 	for(int i = 0; i <= 2; i++){
@@ -350,6 +355,7 @@ void main(){
     }
 
 	pixel = vec4(result, 1.0);
+//	pixel = vec4(vec3(seed), 1.0);
 	
 	imageStore(img_output,pixel_coords,pixel);
 }
