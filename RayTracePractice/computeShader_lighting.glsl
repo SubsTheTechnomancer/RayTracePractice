@@ -51,7 +51,7 @@ float rand(){
 }
 
 float sdot(vec3 x, vec3 y, float f){
-    return clamp(dot(x,y)*f, 0.0,1.0);
+    return clamp(vec3(dot(x,y)*f), 0.0, 1.0);
 }
  
 
@@ -268,19 +268,19 @@ RayHit Trace(Ray ray){
 	current_intersect = intersectRoom(current_ray_origin, current_ray_direction);
 	hit = current_intersect;
 		
-	current_intersect = intersectSphere(current_ray_origin, current_ray_direction, vec3(-5.0, 4.0, -30.0), 5.0, vec3(0.0, 0.0, 1.0));
+	current_intersect = intersectSphere(current_ray_origin, current_ray_direction, vec3(-5.0, 4.0, -30.0), 5.0, vec3(1.0, 1.0, 0.8));
 	if(current_intersect.dist > 0.001f && (hit.dist > current_intersect.dist || hit.dist <= 0.001f))
 	{
 		hit = current_intersect;
 	}
 
-	current_intersect = intersectSphere(current_ray_origin, current_ray_direction, vec3(5.0, -7.0, -20.0), 7.0, vec3(0.0, 1.0, 0.0));
+	current_intersect = intersectSphere(current_ray_origin, current_ray_direction, vec3(5.0, -7.0, -20.0), 7.0, vec3(1.0, 0.8, 1.0));
 	if(current_intersect.dist > 0.001f && (hit.dist > current_intersect.dist || hit.dist <= 0.001f))
 	{
 		hit = current_intersect;
 	}
 
-	current_intersect = intersectSphere(current_ray_origin, current_ray_direction, vec3(-8.0, -7.0, -20.0), 3.0, vec3(1.0, 0.0, 0.0));
+	current_intersect = intersectSphere(current_ray_origin, current_ray_direction, vec3(-8.0, -7.0, -20.0), 3.0, vec3(0.8, 1.0, 1.0));
 	if(current_intersect.dist > 0.001f && (hit.dist > current_intersect.dist || hit.dist <= 0.001f))
 	{
 		hit = current_intersect;
@@ -338,18 +338,15 @@ void main(){
 	float max_x = 5.0;
 	float max_y = 5.0;
 	ivec2 dims = imageSize(img_output);
-
 	float x = float(pixel_coords.x * 2 - dims.x) / dims.x;
 	float y = float(pixel_coords.y * 2 - dims.y) / dims.y;
-	pixel = vec4(pixel_coords.x, pixel_coords.y, 0.0, 1.0);
-
+	pixel = vec4(x, y, 0.0, 1.0);
 	Ray ray;
 	ray.origin = vec3(0.0, 0.0, 10.0);
 	ray.direction = normalize(vec3(x*max_x,y*max_y,0.0) - ray.origin);
 	ray.energy = vec3(1.0f);
 
-	vec3 result = vec3(0,0,0);
-
+	vec3 result;
 	for(int i = 0; i <= 2; i++){
         RayHit hit = Trace(ray);
         result += ray.energy * Shade(ray,hit);
