@@ -150,6 +150,7 @@
   <ItemGroup>
     <None Include="computeShader_bg.glsl" />
     <None Include="computeShader_lighting.glsl" />
+    <None Include="computeShader_new.glsl" />
     <None Include="Fragment.glsl" />
     <None Include="Vertex.glsl" />
   </ItemGroup>

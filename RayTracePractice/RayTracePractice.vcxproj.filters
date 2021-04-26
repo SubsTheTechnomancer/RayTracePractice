@@ -36,6 +36,9 @@
       <Filter>Source Files</Filter>
     </None>
     <None Include="computeShader_lighting.glsl" />
+    <None Include="computeShader_new.glsl">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stb_image.h">

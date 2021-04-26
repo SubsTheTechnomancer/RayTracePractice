@@ -9,6 +9,7 @@
 #include<string>
 #include<sstream>
 #include <vector>
+#include<windows.h>
 
 using namespace std;
 
@@ -29,8 +30,9 @@ const char *fragmentS = "#version 430\n"
 "out vec4 FragColor;\n"
 "in vec2 TexCoord;\n"
 "uniform sampler2D ourTexture;\n"
+"uniform float iter;\n"
 "void main() {\n"
-"FragColor = texture(ourTexture,TexCoord);\n"
+"FragColor = vec4(texture(ourTexture,TexCoord).rgb, 1.0f / (iter + 1.0f));\n"
 "};";
 
 float vertices[] = {
@@ -150,6 +152,8 @@ int main() {
 		shaderSource = GetShaderSource("computeShader_bg.glsl");
 	else if(scene==1)
 		shaderSource = GetShaderSource("computeShader_lighting.glsl");
+	else if (scene == 2)
+		shaderSource = GetShaderSource("computeShader_new.glsl");
 
 	const char* computeSource;
 	computeSource = shaderSource.c_str();
@@ -249,33 +253,42 @@ int main() {
 		0.0f, 0.0f, 10.0f, 1.0f
 	};
 	float seed = 0.5f;
-       
+	float iter = 0.0f;
 	//Loop
 	while (!glfwWindowShouldClose(window)) {
 
 		glUseProgram(rayProgram);
-		glDispatchCompute((GLuint)tw, (GLuint)th, 1);
+		
 		int sizeLoc = glGetUniformLocation(rayProgram, "size");
-		glUniform1f(sizeLoc, sizeof(mesh) / 4);
+//		glUniform1f(sizeLoc, sizeof(mesh) / 4);
 		int seedLoc = glGetUniformLocation(rayProgram, "seed");
 		glUniform1f(seedLoc, seed);
 		seed += 3.1415f;
 		int appertureLoc = glGetUniformLocation(rayProgram, "aperture");
 		glUniform4fv(appertureLoc, 1, aperture);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+		glDispatchCompute((GLuint)tw, (GLuint)th, 1);
 
 		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-		glClear(GL_COLOR_BUFFER_BIT);
+//		glClear(GL_COLOR_BUFFER_BIT);
 		glUseProgram(quadProgram);
 		glBindVertexArray(VAO);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, tex_out);
+		int iterLoc = glGetUniformLocation(quadProgram, "iter");
+		glUniform1f(iterLoc, iter);
+		iter += 1.0f;
+		glEnable(GL_BLEND);
+		glBlendEquation(GL_FUNC_ADD);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		glBindBuffer(GL_UNIFORM_BUFFER, meshBlock);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(mesh), mesh);
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
+		glUseProgram(0);
+//		Sleep(1000);
 		glfwPollEvents();
 
 		glfwSwapBuffers(window);

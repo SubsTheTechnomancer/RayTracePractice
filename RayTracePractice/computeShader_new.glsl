@@ -3,7 +3,6 @@ layout(local_size_x = 1, local_size_y = 1) in;
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 uniform samplerCube skybox;
 uniform vec4 aperture;
-uniform float seed;
 uniform mat4 rotation = mat4(1.0);
 layout(rgba32f, binding = 0) uniform image2D img_output;
 
@@ -27,54 +26,16 @@ struct IntersectData
 	vec3 intersection;
 	vec3 normal;
 	vec4 color;
-	float diffuse;
+	float brightness;
 };
 
-float internal_seed = seed;
-float rand(){
-    return fract(sin(internal_seed/100.0f*dot(pixel.xy ,vec2(12.9898,78.233))) * 43758.5453);
-	internal_seed += 1.0f;
-}
-
-vec3 rotate(vec3 vector, vec3 axis, float angle)
-{
-	vec3 shrink = vector * cos(angle);
-	vec3 sheer = cross(axis, vector) * sin(angle);
-	vec3 expand = axis * dot(axis, vector) * (1.0f - cos(angle));
-	return normalize(shrink + sheer + expand);
-}
-
-float SmoothnessToPhongAlpha(float s){
-    return pow(1000.0f,s*s);
-}
-
-mat3 GetTangentSpace(vec3 normal){
- 
-    vec3 helper = vec3(1,0,0);
-    if(abs(normal.x)>0.99f)
-        helper = vec3(0,0,1);
-    
-    vec3 tangent = normalize(cross(normal,helper));
-    vec3 binormal = normalize(cross(normal,tangent));
- 
-    return mat3(tangent,binormal,normal);
-}
- 
-vec3 SampleHemisphere(vec3 normal,float alpha){
-    float cosTheta = pow(rand(),1.0f/(alpha+1.0f));
-    float sinTheta = sqrt(max(0.0f,1.0f - cosTheta*cosTheta));
-    float phi = 2 * 3.141592f * rand();
-    vec3 tangentSpaceDir = vec3(cos(phi)*sinTheta,sin(phi)*sinTheta,cosTheta);
- 
-    return tangentSpaceDir*GetTangentSpace(normal);
-}
-
-vec4 drawBackground(vec3 r_origin, vec3 r_direction)
+IntersectData intersectRoom(vec3 r_origin, vec3 r_direction)
 {
 	float halflength = 100;
 	bool testBack=true, testLeft=true, testBottom=true;
 	vec3 nearest;
 	float nearest_dist = 10000.0;
+	vec3 normal;
 
 	//front face
 	vec3 p_point = vec3(0.0, 0.0, -halflength);
@@ -88,6 +49,7 @@ vec4 drawBackground(vec3 r_origin, vec3 r_direction)
 			testBottom = false;
 			nearest = r_origin+t*r_direction;
 			nearest_dist = length(t*r_direction);
+			normal = p_normal;
 		}
 	}
 	else testBottom = false;
@@ -107,6 +69,7 @@ vec4 drawBackground(vec3 r_origin, vec3 r_direction)
 			{
 				nearest = r_origin+t*r_direction;
 				nearest_dist = dist;
+				normal = p_normal;
 			}
 		}
 	}
@@ -127,6 +90,7 @@ vec4 drawBackground(vec3 r_origin, vec3 r_direction)
 			{
 				nearest = r_origin+t*r_direction;
 				nearest_dist = dist;
+				normal = p_normal;
 			}
 		}
 	}
@@ -148,6 +112,7 @@ vec4 drawBackground(vec3 r_origin, vec3 r_direction)
 				{
 					nearest = r_origin+t*r_direction;
 					nearest_dist = dist;
+					normal = p_normal;
 				}
 			}
 		}
@@ -169,6 +134,7 @@ vec4 drawBackground(vec3 r_origin, vec3 r_direction)
 				{
 					nearest = r_origin+t*r_direction;
 					nearest_dist = dist;
+					normal = p_normal;
 				}
 			}
 		}
@@ -190,15 +156,15 @@ vec4 drawBackground(vec3 r_origin, vec3 r_direction)
 				{
 					nearest = r_origin+t*r_direction;
 					nearest_dist = dist;
+					normal = p_normal;
 				}
 			}
 		}
 	}
-	return texture(skybox, nearest);
-//	return vec4(1.0, 0.0, 0.0, 1.0);
+	return IntersectData(nearest_dist, nearest, normal, texture(skybox, nearest), 0.0);
 }
 
-IntersectData intersectSphere(vec3 ray_origin, vec3 ray_direction, vec3 centre, float radius, vec4 sphere_color, float diffuse)
+IntersectData intersectSphere(vec3 ray_origin, vec3 ray_direction, vec3 centre, float radius, vec4 sphere_color, float brightness)
 {
 	vec3 omc = ray_origin - centre;
 	float a = dot(ray_direction, ray_direction);
@@ -208,7 +174,7 @@ IntersectData intersectSphere(vec3 ray_origin, vec3 ray_direction, vec3 centre, 
 
 	if(discriminant < 0.0f)
 	{
-		return IntersectData(-1.0f, vec3(0.0), vec3(0.0), sphere_color, diffuse);
+		return IntersectData(-1.0f, vec3(0.0), vec3(0.0), sphere_color, brightness);
 	}
 	else
 	{
@@ -219,7 +185,7 @@ IntersectData intersectSphere(vec3 ray_origin, vec3 ray_direction, vec3 centre, 
 			vec3 intersection = ray_origin + t*ray_direction;
 			float dist = length(t*ray_direction);
 			vec3 normal = normalize(intersection - centre);
-			return IntersectData(dist, intersection, normal, sphere_color, diffuse);
+			return IntersectData(dist, intersection, normal, sphere_color, brightness);
 		}
 
 		numerator = -b + sqrt(discriminant);
@@ -229,11 +195,11 @@ IntersectData intersectSphere(vec3 ray_origin, vec3 ray_direction, vec3 centre, 
 			vec3 intersection = ray_origin + t*ray_direction;
 			float dist = length(t*ray_direction);
 			vec3 normal = normalize(intersection - centre);
-			return IntersectData(dist, intersection, normal, sphere_color, diffuse);
+			return IntersectData(dist, intersection, normal, sphere_color, brightness);
 		}
 		else
 		{
-			return IntersectData(-1.0f, vec3(0.0), vec3(0.0), sphere_color, diffuse);
+			return IntersectData(-1.0f, vec3(0.0), vec3(0.0), sphere_color, brightness);
 		}
 	}
 }
@@ -245,36 +211,44 @@ vec4 rayTrace(int bounces, vec3 origin, vec3 direction)
 	vec3 current_ray_origin = origin;
 	vec3 current_ray_direction = direction;
 	vec4 final_color = vec4(1.0, 1.0, 1.0, 1.0);
+	bool room = true;
 
 	while(bounces>=0)
 	{
-		current_intersect = intersectSphere(current_ray_origin, current_ray_direction, vec3(-5.0, 4.0, -30.0), 5.0, vec4(1.0, 1.0, 0.8, 1.0), 0.0);
+		current_intersect = intersectRoom(current_ray_origin, current_ray_direction);
 		nearest_intersect = current_intersect;
-		
-//		if(bounces==0)
-//				return vec4(nearest_intersect.dist/300.0f, 0.0, 0.0, 1.0);
+		room = true;
+
+		current_intersect = intersectSphere(current_ray_origin, current_ray_direction, vec3(-5.0, 4.0, -30.0), 5.0, vec4(1.0, 1.0, 0.8, 1.0), 0.5f);
+		if(current_intersect.dist > 0.001f && (nearest_intersect.dist > current_intersect.dist || nearest_intersect.dist <= 0.001f))
+		{
+			nearest_intersect = current_intersect;
+			room = false;
+		}
 
 		current_intersect = intersectSphere(current_ray_origin, current_ray_direction, vec3(5.0, -7.0, -20.0), 7.0, vec4(1.0, 0.8, 1.0, 1.0), 0.0);
 		if(current_intersect.dist > 0.001f && (nearest_intersect.dist > current_intersect.dist || nearest_intersect.dist <= 0.001f))
 		{
 			nearest_intersect = current_intersect;
+			room = false;
 		}
 
 		current_intersect = intersectSphere(current_ray_origin, current_ray_direction, vec3(-8.0, -7.0, -20.0), 3.0, vec4(1.0, 1.0, 1.0, 1.0), 0.0);
 		if(current_intersect.dist > 0.001f && (nearest_intersect.dist > current_intersect.dist || nearest_intersect.dist <= 0.001f))
 		{
 			nearest_intersect = current_intersect;
+			room = false;
 		}
 
-		if(nearest_intersect.dist > 0.001f)
+		if(nearest_intersect.dist > 0.001f && room == false)
 		{
-			final_color *= nearest_intersect.color;
-			current_ray_origin = nearest_intersect.intersection;
-			current_ray_direction = reflect(current_ray_direction, nearest_intersect.normal);
+				final_color *= nearest_intersect.color;
+				current_ray_origin = nearest_intersect.intersection;
+				current_ray_direction = reflect(current_ray_direction, nearest_intersect.normal);
 		}
 		else
 		{
-			final_color *= drawBackground(current_ray_origin, current_ray_direction);
+			final_color *= nearest_intersect.color;
 			break;
 		}
 		bounces--;
